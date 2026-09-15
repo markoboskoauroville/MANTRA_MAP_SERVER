@@ -8,10 +8,10 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 MAIN = ROOT / "app/src/main/java/com/mantra/mapserver"
 TESTS = ROOT / "app/src/test/java/com/mantra/mapserver/CoreTest.kt"
-TEST_FLOOR = 30
+TEST_FLOOR = 45
 
 # The front door faces the network, so the parsing of it must be attackable on a desk.
-PURE = ["Http.kt", "Usage.kt", "Regions.kt"]
+PURE = ["Http.kt", "Usage.kt", "Regions.kt", "Access.kt"]
 
 failures, checks = [], []
 
@@ -112,6 +112,25 @@ check("no key-shaped string anywhere in the tree", not hits, f"{scanned} files e
 
 n = len(re.findall(r"@Test", TESTS.read_text()))
 check(f"at least {TEST_FLOOR} unit tests", n >= TEST_FLOOR, f"{n} @Test cases")
+
+
+# THE DOOR (15.9.2026). The server answers the whole local network on purpose, so it issues keys.
+access = code_only((MAIN / "Access.kt").read_text())
+server_src = code_only((MAIN / "Server.kt").read_text())
+check("this phone never needs a key and the network always does",
+      "fun isLoopback" in access and "requireFromNetwork" in access,
+      "loopback cannot be forged from another machine")
+check("the door is actually on the tile route",
+      "Access.mayServe(address, presented, keys(), requireKey())" in server_src,
+      "not a setting that nothing reads")
+check("a refusal names the fix",
+      "add ?key=" in access, "not 401 with nothing after it")
+check("keys come from SecureRandom",
+      "SecureRandom" in (MAIN / "KeyStore.kt").read_text(),
+      "a key predictable from the time it was made is not a key")
+check("a key is masked in the list and whole only on the clipboard",
+      "fun mask" in access and "onCopyKeyed" in screens,
+      "a screenshot of the list gives nothing away")
 
 print(f"\n{len(checks)} checks, {len(failures)} failed")
 if failures:

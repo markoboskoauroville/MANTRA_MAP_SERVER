@@ -24,7 +24,7 @@ object Http {
 
     sealed interface Route {
         /** GET /tiles/{map}/{z}/{x}/{y}.png */
-        data class Tile(val request: TileRequest) : Route
+        data class Tile(val request: TileRequest, val query: Map<String, String> = emptyMap()) : Route
 
         /** GET /maps — what this server is holding. */
         data object Maps : Route
@@ -53,17 +53,19 @@ object Http {
         if (parts.size < 2) return Route.Refused(400, "not a request line")
         val method = parts[0].uppercase()
         if (method != "GET" && method != "HEAD") return Route.Refused(405, "only GET and HEAD")
-        val path = parts[1].substringBefore('?')
+        val whole = parts[1]
+        val path = whole.substringBefore('?')
+        val query = Access.query(whole)
         return when {
             path == "/" || path == "/index.html" -> Route.Index
             path == "/maps" || path == "/maps.json" -> Route.Maps
             path == "/status" || path == "/status.json" -> Route.Status
-            path.startsWith("/tiles/") -> tile(path)
+            path.startsWith("/tiles/") -> tile(path, query)
             else -> Route.Refused(404, "no such thing here")
         }
     }
 
-    private fun tile(path: String): Route {
+    private fun tile(path: String, query: Map<String, String>): Route {
         val bits = path.removePrefix("/tiles/").split('/')
         if (bits.size != 4) return Route.Refused(400, "expected /tiles/map/z/x/y.png")
         val map = safeName(bits[0]) ?: return Route.Refused(400, "that map name is not allowed")
@@ -80,7 +82,7 @@ object Http {
         if (x >= edge || y >= edge) {
             return Route.Refused(404, "that tile is off the edge of zoom $zoom")
         }
-        return Route.Tile(TileRequest(map, zoom, x, y))
+        return Route.Tile(TileRequest(map, zoom, x, y), query)
     }
 
     /**

@@ -30,6 +30,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 class Server(
     private val port: Int,
     private val maps: () -> Map<String, Renderer>,
+    private val keys: () -> List<Access.Key> = { emptyList() },
+    private val requireKey: () -> Boolean = { true },
+    private val onKeyUsed: (String) -> Unit = {},
 ) {
 
     private val running = AtomicBoolean(false)
@@ -88,7 +91,17 @@ class Server(
             val line = reader.readLine() ?: return
             val out = client.getOutputStream()
             when (val route = Http.route(line)) {
-                is Http.Route.Tile -> serveTile(out, route.request, address)
+                is Http.Route.Tile -> {
+                    // THE DOOR. This phone talks to itself without a key; the network does not.
+                    val presented = route.query["key"]
+                    if (!Access.mayServe(address, presented, keys(), requireKey())) {
+                        Usage.refused(address, System.currentTimeMillis())
+                        text(out, 401, "text/plain; charset=utf-8", Access.REFUSAL + "\n")
+                    } else {
+                        presented?.let(onKeyUsed)
+                        serveTile(out, route.request, address)
+                    }
+                }
                 is Http.Route.Maps -> text(out, 200, "application/json", mapsJson())
                 is Http.Route.Status -> text(
                     out,

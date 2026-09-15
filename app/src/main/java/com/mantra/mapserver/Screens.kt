@@ -60,10 +60,16 @@ fun ServerApp(
     onCopyTemplate: (String) -> Unit,
     onClearTiles: () -> Unit,
     onForgetCallers: () -> Unit,
+    onMakeKey: () -> Unit,
+    onRevoke: (Access.Key) -> Unit,
+    onCopyKeyed: (Access.Key) -> Unit,
+    onToggleRequire: () -> Unit,
 ) {
     val listening by Running.listening.collectAsState()
     val maps by Maps.names.collectAsState()
     val note by Maps.note.collectAsState()
+    val keys by KeyStore.keys.collectAsState()
+    val requireKey by KeyStore.requireFromNetwork.collectAsState()
     var callers by remember { mutableIntStateOf(0) }
     var tiles by remember { mutableIntStateOf(0) }
     var bytes by remember { mutableIntStateOf(0) }
@@ -204,6 +210,40 @@ fun ServerApp(
                     }
                 }
             }
+
+            // THE KEYS. The phone itself never needs one; the network does, unless he says
+            // otherwise. A key is shown whole so it can be copied into another device, and the
+            // list shows it masked so a screenshot of this page gives nothing away.
+            Label("access keys", Paint.Dim, 12, TextAlign.Start)
+            SettingRow(
+                title = "the network must present a key",
+                state = if (requireKey) "yes" else "no, open to the wifi",
+                onPress = onToggleRequire,
+            )
+            keys.forEach { key ->
+                Panel {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Label(key.label, Paint.Sand, 12, TextAlign.Start)
+                        Label(Access.mask(key), Paint.Dim, 11)
+                        Label("${key.uses} uses", Paint.Dim, 11)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Label(
+                            text = "copy URL with this key",
+                            colour = Paint.Amber,
+                            size = 12,
+                            modifier = Modifier.clickable { onCopyKeyed(key) },
+                        )
+                        Label(
+                            text = "revoke",
+                            colour = Paint.Red,
+                            size = 12,
+                            modifier = Modifier.clickable { onRevoke(key) },
+                        )
+                    }
+                }
+            }
+            SettingRow("make a new key", "generate", onMakeKey)
 
             SettingRow("forget the caller list", "clear", onForgetCallers)
             SettingRow("delete every rendered tile", Usage.formatBytes(Maps.totalTileCacheBytes()), onClearTiles)

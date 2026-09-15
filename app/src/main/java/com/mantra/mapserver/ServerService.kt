@@ -35,7 +35,14 @@ class ServerService : Service() {
     private fun begin() {
         if (Running.server?.isRunning == true) return
         Maps.load(this)
-        val server = Server(Running.port) { Maps.current() }
+        KeyStore.load(this)
+        val server = Server(
+            port = Running.port,
+            maps = { Maps.current() },
+            keys = { KeyStore.current() },
+            requireKey = { KeyStore.required() },
+            onKeyUsed = { KeyStore.used(it) },
+        )
         val problem = server.start()
         if (problem != null) {
             Maps.say(problem)

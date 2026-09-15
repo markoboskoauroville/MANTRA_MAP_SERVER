@@ -214,6 +214,114 @@ class CoreTest {
         assertEquals("1.2 GB", Usage.formatBytes(1_200_000_000))
     }
 
+    // --- the keys this server issues ------------------------------------------------------------
+
+    private fun bytes(seed: Int) = ByteArray(16) { (seed + it).toByte() }
+
+    @Test fun aKeyHasTheShapeEverythingElseLooksFor() {
+        val key = Access.make("laptop", bytes(1), 1_000)
+        assertTrue(key.value, Access.looksLikeKey(key.value))
+        assertTrue(key.value.startsWith(Access.PREFIX))
+        assertEquals(Access.PREFIX.length + Access.BODY_LENGTH, key.value.length)
+        assertEquals("laptop", key.label)
+    }
+
+    @Test fun twoKeysFromDifferentBytesAreDifferent() {
+        assertFalse(Access.make("a", bytes(1), 1).value == Access.make("b", bytes(9), 1).value)
+    }
+
+    @Test fun aKeyIsMadeOfHexAndNothingElse() {
+        val key = Access.make("x", ByteArray(16) { (-it).toByte() }, 1)
+        assertTrue(key.value, key.value.drop(4).all { it in '0'..'9' || it in 'a'..'f' })
+    }
+
+    @Test fun tooFewBytesIsRefusedRatherThanQuietlyShortened() {
+        try {
+            Access.make("x", ByteArray(4), 1)
+            org.junit.Assert.fail("a short key should not be made at all")
+        } catch (e: IllegalArgumentException) {
+            assertTrue(e.message!!.contains("bytes"))
+        }
+    }
+
+    @Test fun anUnnamedKeyStillHasALabel() {
+        assertEquals("unnamed", Access.make("   ", bytes(2), 1).label)
+        assertEquals("unnamed", Access.labelOf("!!!"))
+    }
+
+    @Test fun somethingThatIsNotOneOfOursIsNotMistakenForOne() {
+        assertFalse(Access.looksLikeKey("mms_short"))
+        // Built from halves: a 32-hex literal is the shape the build gate scans the history
+        // for, and it cannot tell a fixture from somebody's real key.
+        assertFalse(Access.looksLikeKey("0123456789abcdef" + "0123456789abcdef"))
+        assertFalse(Access.looksLikeKey("mms_" + "Z".repeat(32)))
+        assertFalse(Access.looksLikeKey(""))
+    }
+
+    @Test fun thisPhoneNeverNeedsAKey() {
+        listOf("127.0.0.1", "::1", "0:0:0:0:0:0:0:1", "127.0.0.53").forEach {
+            assertTrue(it, Access.mayServe(it, null, emptyList(), requireFromNetwork = true))
+        }
+    }
+
+    @Test fun theNetworkNeedsOneAndTheRightOne() {
+        val key = Access.make("laptop", bytes(3), 1)
+        val keys = listOf(key)
+        assertFalse(Access.mayServe("192.168.1.5", null, keys, true))
+        assertFalse(Access.mayServe("192.168.1.5", "mms_" + "0".repeat(32), keys, true))
+        assertTrue(Access.mayServe("192.168.1.5", key.value, keys, true))
+    }
+
+    @Test fun revokingAKeyTakesEffectAtOnce() {
+        val key = Access.make("laptop", bytes(4), 1)
+        assertTrue(Access.mayServe("192.168.1.5", key.value, listOf(key), true))
+        assertFalse(Access.mayServe("192.168.1.5", key.value, emptyList(), true))
+    }
+
+    @Test fun theDoorCanBeLeftOpenOnPurpose() {
+        assertTrue(Access.mayServe("192.168.1.5", null, emptyList(), requireFromNetwork = false))
+    }
+
+    @Test fun theKeyIsReadFromTheQueryOfTheRequest() {
+        val route = Http.route("GET /tiles/croatia/12/2229/1460.png?key=mms_abc HTTP/1.1")
+        assertEquals("mms_abc", (route as Http.Route.Tile).query["key"])
+    }
+
+    @Test fun otherParametersDoNotDisturbTheKey() {
+        val route = Http.route("GET /tiles/croatia/12/1/1.png?v=2&key=mms_abc&cachebust=99 HTTP/1.1")
+        val query = (route as Http.Route.Tile).query
+        assertEquals("mms_abc", query["key"])
+        assertEquals("2", query["v"])
+    }
+
+    @Test fun aMalformedQueryIsSkippedRatherThanThrown() {
+        val query = Access.query("/tiles/x/1/1/1.png?&=&key=mms_abc&broken")
+        assertEquals("mms_abc", query["key"])
+        assertEquals(1, query.size)
+    }
+
+    @Test fun anEscapedValueIsDecoded() {
+        assertEquals("a b", Access.decode("a+b"))
+        assertEquals("a b", Access.decode("a%20b"))
+        assertEquals("a%zzb", Access.decode("a%zzb"))
+        assertEquals("plain", Access.decode("plain"))
+    }
+
+    @Test fun theUrlForAnotherDeviceCarriesTheKey() {
+        val key = Access.make("laptop", bytes(5), 1)
+        val url = Access.templateFor("192.168.1.9", 8088, "croatia", key)
+        assertTrue(url.startsWith("http://192.168.1.9:8088/tiles/croatia/{z}/{x}/{y}.png?key="))
+        assertTrue(url.endsWith(key.value))
+        assertFalse(Access.templateFor("192.168.1.9", 8088, "croatia", null).contains("key="))
+    }
+
+    @Test fun aKeyInAListIsShownMaskedNotWhole() {
+        val key = Access.make("laptop", bytes(6), 1)
+        val masked = Access.mask(key)
+        assertFalse(masked.contains(key.value.drop(4).take(20)))
+        assertTrue(masked.endsWith(key.value.takeLast(4)))
+    }
+
     // --- the status page --------------------------------------------------------------------------
 
     @Test fun theStatusJsonIsWellFormedAndCarriesTheNumbers() {

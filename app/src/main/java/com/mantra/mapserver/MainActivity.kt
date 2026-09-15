@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         AndroidGraphicFactory.createInstance(application)
         Maps.load(this)
+        KeyStore.load(this)
 
         setContent {
             ServerApp(
@@ -63,6 +64,32 @@ class MainActivity : ComponentActivity() {
                 onClearTiles = {
                     val gone = Maps.clearAllTileCaches()
                     Maps.say("Cleared $gone rendered tiles")
+                    Tick.bump()
+                },
+                onMakeKey = {
+                    val key = KeyStore.make(this, "key ${KeyStore.current().size + 1}")
+                    copy(key.value)
+                    Maps.say("New key made and copied. It is on the clipboard now, and in the list.")
+                    Tick.bump()
+                },
+                onRevoke = { key ->
+                    KeyStore.revoke(this, key.value)
+                    Maps.say("Revoked ${key.label}. Anything using it stops now.")
+                    Tick.bump()
+                },
+                onCopyKeyed = { key ->
+                    val host = Server.localAddress() ?: "127.0.0.1"
+                    val map = Maps.names.value.firstOrNull() ?: "croatia"
+                    copy(Access.templateFor(host, Running.port, map, key))
+                    Maps.say("URL copied, with the key in it")
+                },
+                onToggleRequire = {
+                    val next = !KeyStore.required()
+                    KeyStore.setRequireFromNetwork(this, next)
+                    Maps.say(
+                        if (next) "The network must present a key now"
+                        else "Open to anything on this wifi. The caller list is how you see who."
+                    )
                     Tick.bump()
                 },
                 onForgetCallers = {
@@ -89,9 +116,13 @@ class MainActivity : ComponentActivity() {
     /** The URL a map app needs, on the clipboard, because nobody types one of those correctly. */
     private fun copyTemplate(name: String) {
         val template = Http.tileTemplate("127.0.0.1", Running.port, name)
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("tile template", template))
+        copy(template)
         Maps.say("Copied: $template")
+    }
+
+    private fun copy(text: String) {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("mantra map server", text))
     }
 
     private fun download(region: Regions.Region) {

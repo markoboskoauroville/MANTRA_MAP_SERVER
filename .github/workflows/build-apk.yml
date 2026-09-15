@@ -100,7 +100,7 @@ jobs:
           # THIS APP'S OWN FLOOR, NOT THE ONE IT INHERITED WITH THE WORKFLOW. MANTRA_TRAIL is at
           # 130 because it has years of arithmetic in it; this app is one parser and one
           # counter. The number only ever goes up (never-back-to-zero.md).
-          if total < 30: sys.exit(f"expected at least 30 cases, found {total}")
+          if total < 45: sys.exit(f"expected at least 45 cases, found {total}")
           sys.exit(1 if (fails or errors) else 0)
           EOF
 
