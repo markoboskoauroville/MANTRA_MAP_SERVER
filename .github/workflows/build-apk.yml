@@ -97,7 +97,10 @@ jobs:
               total += int(r.get("tests", 0)); fails += int(r.get("failures", 0)); errors += int(r.get("errors", 0))
           print(f"result files: {len(files)}   tests run: {total}   failures: {fails}   errors: {errors}")
           if len(files) == 0: sys.exit("no test results at all: the suite did not run")
-          if total < 80: sys.exit(f"expected at least 80 cases, found {total}")
+          # THIS APP'S OWN FLOOR, NOT THE ONE IT INHERITED WITH THE WORKFLOW. MANTRA_TRAIL is at
+          # 130 because it has years of arithmetic in it; this app is one parser and one
+          # counter. The number only ever goes up (never-back-to-zero.md).
+          if total < 30: sys.exit(f"expected at least 30 cases, found {total}")
           sys.exit(1 if (fails or errors) else 0)
           EOF
 
