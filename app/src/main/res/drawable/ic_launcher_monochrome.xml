@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A tile grid with one tile lit: what this app does, in one shape. The symbol box is 42 of 108
+  centred (app-icon.md 2), so nothing here leaves 33..75. Painted extent 35..73 = 38 units,
+  0.53 of the 72 unit mask — a grid reads smaller than a single mark, so it sits at the low end.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M35,35 h16 v16 h-16 z" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:pathData="M57,35 h16 v16 h-16 z M35,57 h16 v16 h-16 z M57,57 h16 v16 h-16 z" />
+</vector>
