@@ -119,8 +119,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$KS" ]; then echo "No keystore secret. This build would not be upgradable in place."; exit 1; fi
-          echo "$KS" | base64 -d > trail.p12
-          printf 'storeFile=trail.p12\nstorePassword=%s\nkeyAlias=trail\nkeyPassword=%s\n' "$KS_PW" "$KS_PW" > keystore.properties
+          echo "$KS" | base64 -d > mapserver.p12
+          printf 'storeFile=mapserver.p12\nstorePassword=%s\nkeyAlias=mapserver\nkeyPassword=%s\n' "$KS_PW" "$KS_PW" > keystore.properties
 
       - name: Build the release APK
         run: ./gradlew :app:assembleRelease --no-daemon
