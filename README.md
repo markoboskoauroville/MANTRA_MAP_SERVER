@@ -1,3 +1,5 @@
+### [Download the latest build](https://github.com/markoboskoauroville/MANTRA_MAP_SERVER/releases/latest)
+
 # MANTRA MAP SERVER
 
 Serves mapsforge offline maps as ordinary z/x/y PNG tiles, over HTTP, from the phone.
