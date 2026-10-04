@@ -4,7 +4,9 @@
 
 Serves mapsforge offline maps as ordinary z/x/y PNG tiles, over HTTP, from the phone.
 
-    http://127.0.0.1:8088/tiles/croatia/{z}/{x}/{y}.png
+```
+http://127.0.0.1:8088/tiles/croatia/{z}/{x}/{y}.png
+```
 
 **Why.** Baba, 15.9.2026: the offline map and Thunderforest should reach a map app the same way —
 through a URL. So the rendering happens here, once, and the result is kept as a PNG. MANTRA_TRAIL
